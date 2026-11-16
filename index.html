@@ -16,31 +16,33 @@
         <div class="brand-mark">S</div>
         <div>
           <strong>SAP HCM English Lab</strong>
-          <span>多端同步你的学习进度</span>
+          <span>用 GitHub 免费同步学习进度</span>
         </div>
       </div>
 
-      <div class="auth-tabs">
-        <button class="auth-tab is-active" data-auth-tab="signin">登录</button>
-        <button class="auth-tab" data-auth-tab="signup">注册</button>
-      </div>
-
-      <form class="auth-form" id="authForm" autocomplete="on">
+      <form class="auth-form" id="authForm" autocomplete="off">
         <label class="auth-field">
-          <span>邮箱</span>
-          <input type="email" id="authEmail" required placeholder="you@company.com" />
-        </label>
-        <label class="auth-field">
-          <span>密码</span>
-          <input type="password" id="authPassword" required minlength="6" placeholder="至少 6 位" />
+          <span>GitHub Token</span>
+          <input type="password" id="authToken" required placeholder="ghp_... 或 github_pat_..." autocomplete="off" />
         </label>
         <p class="auth-hint" id="authHint"></p>
-        <button type="submit" class="btn btn-primary btn-block" id="authSubmit">登录</button>
-        <p class="auth-tip" id="authTip">进度保存在本机浏览器，登录后可多端同步。</p>
+        <button type="submit" class="btn btn-primary btn-block" id="authSubmit">连接 GitHub 同步</button>
+
+        <details class="auth-help">
+          <summary>怎么生成 Token（约 30 秒）</summary>
+          <ol>
+            <li>打开 <a href="https://github.com/settings/tokens" target="_blank" rel="noopener">github.com/settings/tokens</a></li>
+            <li>点 <b>Generate new token (classic)</b></li>
+            <li>Expiration 选 <b>No expiration</b></li>
+            <li>勾选 <b>gist</b> 权限（其他都不用勾）</li>
+            <li>生成后复制，粘贴到上面</li>
+          </ol>
+          <p>Token 只保存在你本机浏览器，不会上传到任何地方。云端数据存在你自己的私有 Gist 里。</p>
+        </details>
       </form>
 
       <div class="auth-skip">
-        <button type="button" class="btn btn-ghost btn-block" id="authSkip">先试用，稍后登录</button>
+        <button type="button" class="btn btn-ghost btn-block" id="authSkip">先试用，稍后连接</button>
       </div>
     </div>
   </div>
@@ -148,9 +150,7 @@
     </div>
   </div>
 
-  <!-- ========== CloudBase JS SDK（CDN） ========== -->
-  <script src="https://static.cloudbase.net/cloudbase-js-sdk/latest/cloudbase.full.js"></script>
-  <script src="assets/cloudbase-config.js"></script>
+  <!-- ========== GitHub 同步（无需后端） ========== -->
   <script src="assets/auth-sync.js"></script>
 
   <!-- 数据文件 -->

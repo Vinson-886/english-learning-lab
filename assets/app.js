@@ -1449,17 +1449,15 @@
   /* Auth UI helpers                                                     */
   /* ------------------------------------------------------------------ */
 
-  let authMode = "signin";
-
-  function showAuthOverlay(mode) {
-    authMode = mode || "signin";
+  function showAuthOverlay() {
     const overlay = document.getElementById("authOverlay");
     overlay.hidden = false;
-    document.querySelectorAll(".auth-tab").forEach(t =>
-      t.classList.toggle("is-active", t.getAttribute("data-auth-tab") === authMode));
-    document.getElementById("authSubmit").textContent = authMode === "signin" ? "登录" : "注册";
     document.getElementById("authHint").textContent = "";
-    setTimeout(() => document.getElementById("authEmail").focus(), 50);
+    const input = document.getElementById("authToken");
+    if (input) {
+      input.value = "";
+      setTimeout(() => input.focus(), 50);
+    }
   }
 
   function hideAuthOverlay() {
@@ -1474,29 +1472,19 @@
     const userEmail = document.getElementById("userEmail");
     const userAvatar = document.getElementById("userAvatar");
     const loginBtn = document.getElementById("loginBtn");
-    const sync = window.AuthSync ? window.AuthSync.getSyncStatus() : { authed: false, online: navigator.onLine, isLocalFallback: true };
-
-    if (sync.isLocalFallback) {
-      // CloudBase 未配置 — 纯本地模式
-      syncLabel.textContent = "仅本机存储 · 配置 CloudBase 可多端同步";
-      syncDot.classList.remove("is-live", "is-offline");
-      userChip.hidden = true;
-      loginBtn.hidden = true;
-      return;
-    }
+    const sync = window.AuthSync ? window.AuthSync.getSyncStatus() : { authed: false, online: navigator.onLine };
 
     if (sync.authed) {
-      syncLabel.textContent = sync.online ? "云端同步中（国内）" : "离线 · 本地存储";
+      syncLabel.textContent = sync.online ? "GitHub 同步中" : "离线 · 本地存储";
       syncDot.classList.toggle("is-live", sync.online);
       syncDot.classList.toggle("is-offline", !sync.online);
-      const sess = window.AuthSync.getSession();
-      const email = (sess && sess.user && sess.user.email) || (sync.isAnonymous ? "匿名" : "已登录");
-      userEmail.textContent = sync.isAnonymous ? "匿名用户" : email;
-      userAvatar.textContent = (email && email.charAt(0).toUpperCase()) || "U";
+      const login = sync.login || "github";
+      userEmail.textContent = "@" + login;
+      userAvatar.textContent = login.charAt(0).toUpperCase();
       userChip.hidden = false;
       loginBtn.hidden = true;
     } else {
-      syncLabel.textContent = "仅本机存储 · 登录可同步";
+      syncLabel.textContent = "仅本机存储 · 连接 GitHub 可同步";
       syncDot.classList.remove("is-live", "is-offline");
       userChip.hidden = true;
       loginBtn.hidden = false;
@@ -1505,27 +1493,17 @@
 
   // Auth overlay 内部事件
   document.addEventListener("click", (ev) => {
-    const tab = ev.target.closest(".auth-tab");
-    if (tab) {
-      authMode = tab.getAttribute("data-auth-tab");
-      showAuthOverlay(authMode);
-      return;
-    }
     if (ev.target.id === "authSkip") {
       hideAuthOverlay();
       return;
     }
     if (ev.target.id === "loginBtn") {
-      showAuthOverlay("signin");
-      return;
-    }
-    if (ev.target.closest("[data-logout]")) {
-      if (window.AuthSync) window.AuthSync.signOut();
+      showAuthOverlay();
       return;
     }
     if (ev.target.id === "userChip") {
-      openConfirm("退出登录", "退出后本机保留当前进度，下次登录云端会自动同步。", () => {
-        if (window.AuthSync) window.AuthSync.signOut();
+      openConfirm("断开 GitHub 同步", "云端 Gist 里的进度会保留，下次连接同一个账号会继续同步。", () => {
+        if (window.AuthSync) window.AuthSync.disconnect();
         closeModal();
       });
       return;
@@ -1535,32 +1513,25 @@
   document.addEventListener("submit", async (ev) => {
     if (ev.target && ev.target.id === "authForm") {
       ev.preventDefault();
-      const email = document.getElementById("authEmail").value.trim();
-      const password = document.getElementById("authPassword").value;
+      const input = document.getElementById("authToken");
+      const token = input.value.trim();
       const hint = document.getElementById("authHint");
       const btn = document.getElementById("authSubmit");
       hint.textContent = "";
       btn.disabled = true;
-      btn.textContent = authMode === "signin" ? "登录中…" : "注册中…";
+      btn.textContent = "连接中…";
       try {
-        if (authMode === "signin") {
-          await window.AuthSync.signIn(email, password);
-        } else {
-          await window.AuthSync.signUp(email, password);
-          hint.textContent = "注册成功！如果启用了邮箱验证，请先点击邮件里的确认链接，再回来登录。";
-          authMode = "signin";
-          showAuthOverlay("signin");
-          return;
-        }
+        await window.AuthSync.connect(token);
       } catch (err) {
-        hint.textContent = err && err.message ? err.message : "操作失败，请重试。";
+        hint.textContent = err && err.message ? err.message : "连接失败，请重试。";
         btn.disabled = false;
-        btn.textContent = authMode === "signin" ? "登录" : "注册";
+        btn.textContent = "连接 GitHub 同步";
         return;
       }
       btn.disabled = false;
+      btn.textContent = "连接 GitHub 同步";
       hideAuthOverlay();
-      showToast("欢迎回来，" + email);
+      showToast("已连接 GitHub，进度开始同步");
     }
   });
 
@@ -1597,11 +1568,11 @@
     try { window.AuthSync.init(); } catch (e) { console.warn(e); }
   }
 
-  // 首次加载：如果没 session，延迟 400ms 弹登录窗（给用户浏览时间）
+  // 首次加载：如果还没连接 GitHub，延迟 400ms 弹连接窗
   setTimeout(() => {
-    const hasSession = !!(window.AuthSync && window.AuthSync.getSession());
-    if (!hasSession) {
-      showAuthOverlay("signin");
+    const connected = !!(window.AuthSync && window.AuthSync.getSession());
+    if (!connected) {
+      showAuthOverlay();
     }
     updateSyncChrome();
   }, 400);
